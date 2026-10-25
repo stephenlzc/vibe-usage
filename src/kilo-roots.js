@@ -1,4 +1,4 @@
-import { accessSync, constants, lstatSync, realpathSync, statSync } from 'node:fs';
+import { closeSync, lstatSync, openSync, realpathSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { posix, win32 } from 'node:path';
 
@@ -68,7 +68,9 @@ export function findKiloDbs({ env = process.env, home = homedir(), platform = pr
       if (stat.isDirectory() && !directoryRoots) throw new Error('数据库路径是目录而不是文件');
       const path = stat.isDirectory() ? pathsFor(platform).join(candidate, KILO_DB_NAME) : candidate;
       if (!statSync(path).isFile()) throw new Error('数据库路径不是文件');
-      accessSync(path, constants.R_OK);
+      // Windows accessSync(R_OK) does not enforce NTFS ReadData ACLs. A
+      // read-only open checks actual permission without reading any payload.
+      closeSync(openSync(path, 'r'));
       const canonical = realpathSync(path);
       if (!seen.has(canonical)) {
         seen.add(canonical);
